@@ -177,28 +177,27 @@ func Read(dir, filename string) (*Manifest, error) {
 }
 
 func buildSync(source, tag string, cache bool, dockerfile string) error {
-	log.Print("DOckerfile")
-	log.Print(source)
-	log.Print(tag)
-	log.Print(dockerfile)
+	log.Print("BUILD SYNC")
 	if dockerfile == "" {
 		dockerfile = "Dockerfile"
 	}
 
-	log.Print(filepath.Join(source, dockerfile))
+	byts, err := createTarball(source)
+	if err != nil {
+		return err
+	}
 
 	dc, _ := docker.NewClientFromEnv()
 	opts := docker.BuildImageOptions{
 		Name:         tag,
-		Dockerfile:   dockerfile,
+		InputStream:  bytes.NewReader(byts),
 		OutputStream: os.Stdout,
 		Pull:         !cache,
 		NoCache:      !cache,
 	}
 
-	err := dc.BuildImage(opts)
+	err = dc.BuildImage(opts)
 	if err != nil {
-		log.Print("BUILD ERROR")
 		log.Print(err.Error())
 		return err
 	}
@@ -206,8 +205,8 @@ func buildSync(source, tag string, cache bool, dockerfile string) error {
 }
 
 func pullSync(image string) error {
+	log.Print("PULL SYNC")
 	dc, _ := docker.NewClientFromEnv()
-	log.Print("NEW PULL SYNC")
 	return dc.PullImage(docker.PullImageOptions{
 		Repository:   image,
 		OutputStream: os.Stdout,
@@ -217,15 +216,21 @@ func pullSync(image string) error {
 }
 
 func pushSync(local, remote string) error {
-	err := run("docker", "tag", "-f", local, remote)
-
-	if err != nil {
-		return err
+	log.Print("PUSH SYNC")
+	dc, _ := docker.NewClientFromEnv()
+	opts := docker.PushImageOptions{
+		Name:         local,
+		Tag:          remote,
+		OutputStream: os.Stdout,
 	}
 
-	err = run("docker", "push", remote)
+	err := dc.PushImage(
+		opts,
+		docker.AuthConfiguration{},
+	)
 
 	if err != nil {
+		log.Print(err.Error())
 		return err
 	}
 
@@ -1503,4 +1508,57 @@ func (m *Manifest) processSync(local string, syncs []Sync) error {
 	}
 
 	return nil
+}
+
+func createTarball(base string) ([]byte, error) {
+	cwd, err := os.Getwd()
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Chdir(base)
+
+	if err != nil {
+		return nil, err
+	}
+
+	args := []string{"cz"}
+
+	// If .dockerignore exists, use it to exclude files from the tarball
+	if _, err = os.Stat(".dockerignore"); err == nil {
+		args = append(args, "--exclude-from", ".dockerignore")
+	}
+
+	args = append(args, ".")
+
+	cmd := exec.Command("tar", args...)
+
+	out, err := cmd.StdoutPipe()
+
+	if err != nil {
+		return nil, err
+	}
+
+	cmd.Start()
+
+	bytes, err := ioutil.ReadAll(out)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = cmd.Wait()
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.Chdir(cwd)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes, nil
 }
