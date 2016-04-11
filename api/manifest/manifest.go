@@ -107,6 +107,7 @@ func Init(dir string) (changed []string, err error) {
 }
 
 func Read(dir, filename string) (*Manifest, error) {
+	log.Print("HERE WE ARE")
 	data, err := ioutil.ReadFile(filepath.Join(dir, filename))
 
 	if err != nil {
@@ -176,26 +177,43 @@ func Read(dir, filename string) (*Manifest, error) {
 }
 
 func buildSync(source, tag string, cache bool, dockerfile string) error {
-	args := []string{"build", "-t", tag}
-
-	// if called with `convox build --no-cache`, assume intent to build from scratch.
-	// So both pull latest images from DockerHub and build without cache
-	if !cache {
-		args = append(args, "--pull")
-		args = append(args, "--no-cache")
+	log.Print("DOckerfile")
+	log.Print(source)
+	log.Print(tag)
+	log.Print(dockerfile)
+	if dockerfile == "" {
+		dockerfile = "Dockerfile"
 	}
 
-	if dockerfile != "" {
-		args = append(args, "-f", filepath.Join(source, dockerfile))
+	log.Print(filepath.Join(source, dockerfile))
+
+	dc, _ := docker.NewClientFromEnv()
+	opts := docker.BuildImageOptions{
+		Name:         tag,
+		Dockerfile:   dockerfile,
+		OutputStream: os.Stdout,
+		Pull:         !cache,
+		NoCache:      !cache,
 	}
 
-	args = append(args, source)
-
-	return run("docker", args...)
+	err := dc.BuildImage(opts)
+	if err != nil {
+		log.Print("BUILD ERROR")
+		log.Print(err.Error())
+		return err
+	}
+	return nil
 }
 
 func pullSync(image string) error {
-	return run("docker", "pull", image)
+	dc, _ := docker.NewClientFromEnv()
+	log.Print("NEW PULL SYNC")
+	return dc.PullImage(docker.PullImageOptions{
+		Repository:   image,
+		OutputStream: os.Stdout,
+	},
+		docker.AuthConfiguration{},
+	)
 }
 
 func pushSync(local, remote string) error {
