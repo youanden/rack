@@ -30,6 +30,8 @@ type Client struct {
 	Host     string
 	Password string
 	Version  string
+
+	Rack string
 }
 
 type Params map[string]string
@@ -297,6 +299,10 @@ func (c *Client) Stream(path string, headers map[string]string, in io.Reader, ou
 		InsecureSkipVerify: true,
 	}
 
+	if c.Rack != "" {
+		config.Header.Set("Rack", c.Rack)
+	}
+
 	config.Header.Set("Version", c.Version)
 
 	userpass := fmt.Sprintf("convox:%s", c.Password)
@@ -373,6 +379,10 @@ func (c *Client) request(method, path string, body io.Reader) (*http.Request, er
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Version", c.Version)
+
+	if c.Rack != "" {
+		req.Header.Add("Rack", c.Rack)
+	}
 
 	return req, nil
 }
