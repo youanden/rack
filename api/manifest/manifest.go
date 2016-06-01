@@ -1384,10 +1384,12 @@ type Sync struct {
 var syncs = []Sync{}
 
 func registerSync(container, local, remote string) error {
-	syscall.Setrlimit(syscall.RLIMIT_NOFILE, &syscall.Rlimit{
-		Max: 999999,
-		Cur: 999999,
-	})
+	if runtime.GOOS != "windows" {
+		syscall.Setrlimit(syscall.RLIMIT_NOFILE, &syscall.Rlimit{
+			Max: 999999,
+			Cur: 999999,
+		})
+	}
 
 	abs, err := filepath.Abs(local)
 
