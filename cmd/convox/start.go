@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/convox/rack/api/manifest"
+	"github.com/"
 	"github.com/convox/rack/cmd/convox/stdcli"
 	"gopkg.in/urfave/cli.v1"
 )

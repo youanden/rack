@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/convox/rack/api/manifest"
+	"github.com/"
 	"github.com/convox/rack/client"
 )
 

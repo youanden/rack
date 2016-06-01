@@ -23,7 +23,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/convox/rack/api/helpers"
-	"github.com/convox/rack/api/manifest"
+	"github.com/"
 	"github.com/convox/rack/api/structs"
 )
 
