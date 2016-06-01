@@ -150,6 +150,7 @@
 {{ define "process-conditions" }}
   {{ range $k := .EntryNames }}
     "Blank{{ upper $k }}Service": { "Fn::Equals": [ "", "" ] },
+    "NonZero{{ upper $k }}DesiredCount": { "Fn::Not": [{ "Fn::Equals": [ {"Ref": "{{ upper $k }}DesiredCount" }, 0 ] }] },
   {{ end }}
 {{ end }}
 
@@ -207,6 +208,7 @@
         }
       },
       "{{ upper $e.Name }}ECSService": {
+        "Condition": "NonZero{{ upper $e.Name }}DesiredCount",
         "DependsOn": [
           {{ if $e.HasBalancer }}
             "{{ $manifest.BalancerResourceName $e.Name }}",
@@ -296,13 +298,16 @@
   {{ range .Balancers }}
     {{ $balancer := . }}
     "Balancer{{ upper .ProcessName }}Host": {
+      "Condition": "NonZero{{ upper .ProcessName }}DesiredCount",
       "Value": { "Fn::GetAtt": [ "{{ .ResourceName }}", "DNSName" ] }
     },
     {{ range .PortMappings }}
       "{{ upper $balancer.ProcessName }}Port{{ .Balancer }}Balancer": {
+        "Condition": "NonZero{{ upper $balancer.ProcessName }}DesiredCount",
         "Value": { "Ref": "{{ upper $balancer.ProcessName }}Port{{ .Balancer }}Balancer" }
       },
       "{{ upper $balancer.ProcessName }}Port{{ .Balancer }}BalancerName": {
+        "Condition": "NonZero{{ upper $balancer.ProcessName }}DesiredCount",
         "Value": {{ $balancer.LoadBalancerName }}
       },
     {{ end }}
@@ -313,6 +318,7 @@
   {{ range .Balancers }}
     {{ $balancer := . }}
     "{{ .ResourceName }}SecurityGroup": {
+      "Condition": "NonZero{{ upper $balancer.ProcessName }}DesiredCount",
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
         "GroupDescription": { "Fn::Join": [ " ", [ { "Ref": "AWS::StackName" }, "-balancer" ] ] },
@@ -332,6 +338,7 @@
     },
     "{{ .ResourceName }}": {
       "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Condition": "NonZero{{ upper .ProcessName }}DesiredCount",
       "DependsOn": [ "{{ .ResourceName }}SecurityGroup" ],
       "Properties": {
         {{ if eq .Scheme "internal" }}
